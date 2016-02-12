@@ -6,6 +6,7 @@ import com.lowagie.text.*;
 import com.lowagie.text.pdf.PdfAcroForm;
 import com.lowagie.text.pdf.PdfWriter;
 
+// based on Bruno Lowagie examples iText in Action
 public class UnsignedSignatureField {
 
     public static void main(String[] args) throws Exception {
