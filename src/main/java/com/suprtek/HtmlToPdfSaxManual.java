@@ -2,6 +2,7 @@ package com.suprtek;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
@@ -10,21 +11,12 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 
+import com.lowagie.text.*;
 import org.xml.sax.Attributes;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
-import com.lowagie.text.Anchor;
-import com.lowagie.text.Chunk;
-import com.lowagie.text.Document;
-import com.lowagie.text.DocumentException;
-import com.lowagie.text.Element;
-import com.lowagie.text.Font;
-import com.lowagie.text.List;
-import com.lowagie.text.ListItem;
-import com.lowagie.text.Paragraph;
-import com.lowagie.text.TextElementArray;
 import com.lowagie.text.html.HtmlTags;
 import com.lowagie.text.pdf.CMYKColor;
 import com.lowagie.text.pdf.PdfWriter;
@@ -100,7 +92,7 @@ public class HtmlToPdfSaxManual extends DefaultHandler {
             } else if (HtmlTags.LISTITEM.equals(qName)) {
                 stack.push(new ListItem());
             } else if (HtmlTags.IMAGE.equals(qName)) {
-                //TODO handle images
+                handleImage(attributes);
             }
         } else if (HtmlTags.BODY.equals(qName)) {
             document.open();
@@ -177,6 +169,73 @@ public class HtmlToPdfSaxManual extends DefaultHandler {
             TextElementArray prev = (TextElementArray) stack.pop();
             prev.add(element);
             stack.push(prev);
+        }
+    }
+
+    private void handleImage(Attributes attributes) {
+        String url = attributes.getValue(HtmlTags.URL);
+        String alt = attributes.getValue(HtmlTags.ALT);
+        if (url == null) {
+            return;
+        }
+        Image img;
+        try {
+            img = Image.getInstance(getClass().getResource(url));
+            if (alt != null) {
+                img.setAlt(alt);
+            }
+        } catch (IOException | BadElementException e) {
+            if (alt == null) {
+                try {
+                    document.add(new Paragraph(e.getMessage()));
+                } catch (DocumentException e1) {
+                    throw new RuntimeException(e1);
+                }
+            } else {
+                try {
+                    document.add(new Paragraph(alt));
+                } catch (DocumentException e1) {
+                    throw new RuntimeException(e1);
+                }
+            }
+            return;
+        }
+        String property;
+        property = attributes.getValue(HtmlTags.BORDERWIDTH);
+        if (property != null) {
+            int border = Integer.parseInt(property);
+            if (border == 0) {
+                img.setBorder(Image.NO_BORDER);
+            } else {
+                img.setBorder(Image.BOX);
+                img.setBorderWidth(border);
+            }
+        }
+        property = attributes.getValue(HtmlTags.ALIGN);
+        if (property != null) {
+            int align = Image.DEFAULT;
+            if (ElementTags.ALIGN_LEFT.equalsIgnoreCase(property)) {
+                align = Image.LEFT;
+            } else if (ElementTags.ALIGN_RIGHT.equalsIgnoreCase(property)) {
+                align = Image.RIGHT;
+            } else if (ElementTags.ALIGN_MIDDLE.equalsIgnoreCase(property)) {
+                align = Image.MIDDLE;
+            }
+            img.setAlignment(align | Image.TEXTWRAP);
+        }
+        property = attributes.getValue(HtmlTags.PLAINWIDTH);
+        if (property != null) {
+            int w = Integer.parseInt(property);
+            property = attributes.getValue(HtmlTags.PLAINHEIGHT);
+            if (property != null) {
+                int h = Integer.parseInt(property);
+                img.scaleAbsolute(w, h);
+            }
+        }
+        try {
+            document.add(img);
+        } catch (DocumentException e) {
+            throw new RuntimeException(e);
         }
     }
 
